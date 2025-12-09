@@ -72,7 +72,7 @@ jobs:
             GIT_AUTHOR_DATE="$COMMIT_DATETIME_ISO" \
             GIT_COMMITTER_DATE="$COMMIT_DATETIME_ISO" \
             git add .
-            git commit -m "Automated snapshot $COMMIT_DATETIME_ISO"
+            git commit -m "Updates"
             git push origin main
           else
             echo "No changes to commit; skipping snapshot."
