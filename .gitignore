@@ -1,3 +1,6 @@
+# --------------------------
+# Terraform
+# --------------------------
 *.tfstate
 *.tfstate.*
 crash.log
@@ -10,10 +13,22 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 provider.tf
+
+# --------------------------
+# Terragrunt
+# --------------------------
 .terragrunt-cache/
 **/.terragrunt-cache/
+
+# --------------------------
+# AWS CLI Credentials (just in case)
+# --------------------------
 .aws/
 .aws/*
+
+# --------------------------
+# Dev Container stuff
+# --------------------------
 .devcontainer/.devcontainer.json
 .devcontainer/devcontainer.*.json
 **/.devcontainer/Dockerfile.local
@@ -21,6 +36,10 @@ provider.tf
 **/.devcontainer/tmp/
 **/.devcontainer/.cache/
 **/.devcontainer/.docker/
+
+# --------------------------
+# Local tooling / environment
+# --------------------------
 *.log
 *.bak
 *.swp
@@ -29,5 +48,8 @@ provider.tf
 .env.*
 .vscode/
 .idea/
+
+# --------------------------
+# Python
+# --------------------------
 __pycache__/
-node_modules/
