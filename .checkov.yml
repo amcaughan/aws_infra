@@ -2,5 +2,5 @@
 # This repo represents a single-account, personal AWS setup
 # Many alerts aren't worth the cost / complexity
 
-skip_checks:
+skip-check:
   CKV2_AWS_3
