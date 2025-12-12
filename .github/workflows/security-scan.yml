@@ -39,6 +39,7 @@ jobs:
 
   report:
     runs-on: ubuntu-latest
+    if: ${{ always() }}
     needs: [checkov, trivy, gitleaks, actionlint]
     steps:
       - uses: actions/download-artifact@v4
