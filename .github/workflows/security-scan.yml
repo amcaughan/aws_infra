@@ -10,14 +10,14 @@ permissions:
 
 jobs:
   checkov:
-    uses: amcaughan/shared_workflows/.github/workflows/scan-checkov.yml@ac4f8076d1a19c86d2c07ed5ce1cbcabd4d44c60
+    uses: amcaughan/shared_workflows/.github/workflows/scan-checkov.yml@3c4db58b40320455b1a2bf377a5496914693f6f2
     with:
       artifact_name: sarif-checkov
       sarif_filename: checkov.sarif
       scan_path: .
 
   trivy:
-    uses: amcaughan/shared_workflows/.github/workflows/scan-trivy.yml@ac4f8076d1a19c86d2c07ed5ce1cbcabd4d44c60
+    uses: amcaughan/shared_workflows/.github/workflows/scan-trivy.yml@3c4db58b40320455b1a2bf377a5496914693f6f2
     with:
       artifact_name: sarif-trivy
       sarif_filename: trivy.sarif
@@ -25,14 +25,14 @@ jobs:
       scanners: vuln,license
 
   gitleaks:
-    uses: amcaughan/shared_workflows/.github/workflows/scan-gitleaks.yml@ac4f8076d1a19c86d2c07ed5ce1cbcabd4d44c60
+    uses: amcaughan/shared_workflows/.github/workflows/scan-gitleaks.yml@3c4db58b40320455b1a2bf377a5496914693f6f2
     with:
       artifact_name: sarif-gitleaks
       sarif_filename: gitleaks.sarif
       redact: true
 
   actionlint:
-    uses: amcaughan/shared_workflows/.github/workflows/scan-actionlint.yml@ac4f8076d1a19c86d2c07ed5ce1cbcabd4d44c60
+    uses: amcaughan/shared_workflows/.github/workflows/scan-actionlint.yml@3c4db58b40320455b1a2bf377a5496914693f6f2
     with:
       artifact_name: sarif-actionlint
       sarif_filename: actionlint.sarif
@@ -45,7 +45,7 @@ jobs:
         with:
           path: sarif
 
-      - uses: amcaughan/shared_workflows/.github/actions/sarif-report@ac4f8076d1a19c86d2c07ed5ce1cbcabd4d44c60
+      - uses: amcaughan/shared_workflows/.github/actions/sarif-report@3c4db58b40320455b1a2bf377a5496914693f6f2
         with:
           title: "Repo security report"
           sarif_glob: "sarif/**/**/*.sarif"
@@ -56,3 +56,12 @@ jobs:
           name: security-report
           path: out/security-report.html
           retention-days: 14
+
+      - name: Attach HTML to Step Summary
+        shell: bash
+        run: |
+          {
+            echo "<details open><summary>Security report (HTML)</summary>"
+            cat out/security-report.html
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
