@@ -1,7 +1,9 @@
+# Terraform state S3 bucket
 resource "aws_s3_bucket" "this" {
   bucket = var.bucket_name
 }
 
+# Versioning
 resource "aws_s3_bucket_versioning" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -10,6 +12,7 @@ resource "aws_s3_bucket_versioning" "this" {
   }
 }
 
+# AWS Managed Encryption
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -20,6 +23,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   }
 }
 
+# Block all forms of public access
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -29,6 +33,7 @@ resource "aws_s3_bucket_public_access_block" "this" {
   restrict_public_buckets = true
 }
 
+# Enforce bucket-owner object ownership
 resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -37,6 +42,34 @@ resource "aws_s3_bucket_ownership_controls" "this" {
   }
 }
 
+# Lifecycle
+resource "aws_s3_bucket_lifecycle_configuration" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  rule {
+    id     = "expire-noncurrent-versions"
+    status = "Enabled"
+
+    filter {}
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+# TLS policy
 data "aws_iam_policy_document" "tls_only" {
   statement {
     sid     = "DenyInsecureTransport"

@@ -1,0 +1,6 @@
+# Global Checkov configuration for this repository.
+# This repo represents a single-account, personal AWS setup
+# Many alerts aren't worth the cost / complexity
+
+skip_checks:
+  CKV2_AWS_3
