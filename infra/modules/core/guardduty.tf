@@ -7,7 +7,7 @@ resource "aws_guardduty_detector" "this" {
     }
   }
 
-  tags = merge(local.tags, {
+  tags = {
     Name = "guardduty-detector"
-  })
+  }
 }

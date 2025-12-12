@@ -7,9 +7,9 @@ resource "aws_cloudtrail" "main" {
   enable_log_file_validation    = true
   is_organization_trail         = false
 
-  tags = merge(local.tags, {
+  tags = {
     Name = "account-trail"
-  })
+  }
 
   depends_on = [
     aws_s3_bucket_policy.cloudtrail
@@ -23,9 +23,9 @@ resource "aws_s3_bucket" "cloudtrail" {
 
   force_destroy = false
 
-  tags = merge(local.tags, {
+  tags = {
     Name = "cloudtrail-logs"
-  })
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "cloudtrail" {
