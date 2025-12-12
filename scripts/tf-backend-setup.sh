@@ -5,7 +5,6 @@ set -euo pipefail
 REGION="us-east-2"
 PROFILE="default"
 BUCKET_NAME="amcaughan-tf-state-us-east-2" 
-TABLE_NAME="amcaughan-terraform-locks"
 
 # Helpers
 echo_hdr() {
@@ -58,6 +57,62 @@ aws_cmd s3api put-public-access-block \
   --public-access-block-configuration \
     "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
 
+bucket_policy_exists() {
+  aws_cmd s3api get-bucket-policy --bucket "$BUCKET_NAME" >/dev/null 2>&1
+}
+
+echo_hdr "Enforcing BucketOwnerEnforced (disable ACLs) on bucket: $BUCKET_NAME"
+aws_cmd s3api put-bucket-ownership-controls \
+  --bucket "$BUCKET_NAME" \
+  --ownership-controls '{
+    "Rules": [{"ObjectOwnership":"BucketOwnerEnforced"}]
+  }'
+
+echo_hdr "Ensuring TLS-only bucket policy exists on bucket: $BUCKET_NAME"
+
+if bucket_policy_exists; then
+  echo "Bucket policy already exists; not overwriting."
+else
+  echo_hdr "Enforcing TLS-only bucket policy on bucket: $BUCKET_NAME"
+  POLICY_FILE="$(mktemp)"
+  cat >"$POLICY_FILE" <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyInsecureTransport",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::$BUCKET_NAME",
+        "arn:aws:s3:::$BUCKET_NAME/*"
+      ],
+      "Condition": {
+        "Bool": { "aws:SecureTransport": "false" }
+      }
+    }
+  ]
+}
+EOF
+
+  aws_cmd s3api put-bucket-policy \
+    --bucket "$BUCKET_NAME" \
+    --policy "file://$POLICY_FILE"
+
+  rm -f "$POLICY_FILE"
+fi
+
+echo_hdr "Tagging bucket: $BUCKET_NAME"
+aws_cmd s3api put-bucket-tagging \
+  --bucket "$BUCKET_NAME" \
+  --tagging '{
+    "TagSet": [
+      {"Key":"Project","Value":"aws_infra_core"},
+      {"Key":"ManagedBy","Value":"bootstrap"}
+    ]
+  }'
+
 
 echo_hdr "Done."
 
@@ -77,4 +132,76 @@ remote_state {
     encrypt        = true
   }
 }
+EOF
+
+cat <<EOF
+
+============================================================
+Terraform backend bootstrap complete
+============================================================
+
+This script created and/or enforced the following on the
+Terraform state S3 bucket:
+
+  - S3 bucket:               $BUCKET_NAME
+  - Region:                  $REGION
+  - Block Public Access:     ENABLED
+  - Bucket versioning:       ENABLED
+  - Default encryption:      SSE-S3 (AES256)
+  - Object ownership:        BucketOwnerEnforced (ACLs disabled)
+  - Bucket policy:           TLS-only access enforced
+  - Tags:
+      Project   = aws_infra_core
+      ManagedBy = bootstrap
+
+This bootstrap exists only to allow Terraform/Terragrunt
+to start safely. It is expected that Terraform will take
+ownership of these resources after initialization.
+
+------------------------------------------------------------
+Next steps (recommended)
+------------------------------------------------------------
+
+1) Define Terraform resources for the state bucket, e.g.:
+
+     - aws_s3_bucket
+     - aws_s3_bucket_versioning
+     - aws_s3_bucket_server_side_encryption_configuration
+     - aws_s3_bucket_public_access_block
+     - aws_s3_bucket_ownership_controls
+     - aws_s3_bucket_policy
+
+2) Import the existing bucket into Terraform state:
+
+     terraform import aws_s3_bucket.tf_state $BUCKET_NAME
+     terraform import aws_s3_bucket_versioning.tf_state $BUCKET_NAME
+     terraform import aws_s3_bucket_server_side_encryption_configuration.tf_state $BUCKET_NAME
+     terraform import aws_s3_bucket_public_access_block.tf_state $BUCKET_NAME
+     terraform import aws_s3_bucket_ownership_controls.tf_state $BUCKET_NAME
+
+   If you manage the bucket policy in Terraform:
+
+     terraform import aws_s3_bucket_policy.tf_state $BUCKET_NAME
+
+3) Run 'terraform plan' and adjust configuration until
+   the plan is clean.
+
+------------------------------------------------------------
+Additional hardening to manage in Terraform (later)
+------------------------------------------------------------
+
+  - Restrict bucket access to specific IAM roles
+    (e.g. CI role, admin role) via bucket policy.
+
+  - Add or standardize tags (e.g. environment, owner,
+    cost center) under Terraform management.
+
+  - Optionally switch to SSE-KMS if you want tighter
+    access control and auditing.
+
+Once Terraform fully manages the bucket, this bootstrap
+script should only be needed for new accounts.
+
+============================================================
+
 EOF
