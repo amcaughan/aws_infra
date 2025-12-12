@@ -18,7 +18,7 @@ remote_state {
     bucket         = "amcaughan-tf-state-us-east-2"
     key            = "${path_relative_to_include()}/terraform.tfstate"
     region         = local.aws_region
-    dynamodb_table = "amcaughan-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
 }
