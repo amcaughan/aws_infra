@@ -45,7 +45,7 @@ jobs:
         with:
           path: sarif
 
-      - uses: amcaughan/shared_workflows/sarif-report@ac4f8076d1a19c86d2c07ed5ce1cbcabd4d44c60
+      - uses: amcaughan/shared_workflows/actions/sarif-report@ac4f8076d1a19c86d2c07ed5ce1cbcabd4d44c60
         with:
           title: "Repo security report"
           sarif_glob: "sarif/**/**/*.sarif"
