@@ -1,10 +1,10 @@
-# Terraform state S3 bucket
 resource "aws_s3_bucket" "this" {
-  bucket = var.bucket_name
+  bucket        = var.bucket_name
+  force_destroy = var.force_destroy
 }
 
-# Versioning
 resource "aws_s3_bucket_versioning" "this" {
+  count  = var.enable_versioning ? 1 : 0
   bucket = aws_s3_bucket.this.id
 
   versioning_configuration {
@@ -12,7 +12,6 @@ resource "aws_s3_bucket_versioning" "this" {
   }
 }
 
-# AWS Managed Encryption
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -23,7 +22,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   }
 }
 
-# Block all forms of public access
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -33,7 +31,6 @@ resource "aws_s3_bucket_public_access_block" "this" {
   restrict_public_buckets = true
 }
 
-# Enforce bucket-owner object ownership
 resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -42,7 +39,6 @@ resource "aws_s3_bucket_ownership_controls" "this" {
   }
 }
 
-# Lifecycle
 resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
@@ -53,7 +49,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
     filter {}
 
     noncurrent_version_expiration {
-      noncurrent_days = 30
+      noncurrent_days = var.noncurrent_version_expiration_days
     }
   }
 
@@ -64,13 +60,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
     filter {}
 
     abort_incomplete_multipart_upload {
-      days_after_initiation = 7
+      days_after_initiation = var.abort_incomplete_multipart_days
     }
   }
 }
 
-# TLS policy
 data "aws_iam_policy_document" "tls_only" {
+  count = var.enable_tls_deny ? 1 : 0
+
   statement {
     sid     = "DenyInsecureTransport"
     effect  = "Deny"
@@ -82,8 +79,8 @@ data "aws_iam_policy_document" "tls_only" {
     }
 
     resources = [
-      "arn:aws:s3:::${var.bucket_name}",
-      "arn:aws:s3:::${var.bucket_name}/*",
+      aws_s3_bucket.this.arn,
+      "${aws_s3_bucket.this.arn}/*",
     ]
 
     condition {
@@ -94,7 +91,17 @@ data "aws_iam_policy_document" "tls_only" {
   }
 }
 
+data "aws_iam_policy_document" "combined" {
+  count = (var.enable_tls_deny || var.extra_bucket_policy_json != null) ? 1 : 0
+
+  source_policy_documents = compact([
+    var.enable_tls_deny ? data.aws_iam_policy_document.tls_only[0].json : null,
+    var.extra_bucket_policy_json,
+  ])
+}
+
 resource "aws_s3_bucket_policy" "this" {
+  count  = (var.enable_tls_deny || var.extra_bucket_policy_json != null) ? 1 : 0
   bucket = aws_s3_bucket.this.id
-  policy = data.aws_iam_policy_document.tls_only.json
+  policy = data.aws_iam_policy_document.combined[0].json
 }
