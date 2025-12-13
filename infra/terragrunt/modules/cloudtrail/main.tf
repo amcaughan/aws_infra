@@ -117,7 +117,7 @@ resource "aws_iam_role_policy" "cloudtrail_to_cw" {
 resource "aws_sns_topic" "this" {
   count             = var.enable_sns_notifications ? 1 : 0
   name              = var.sns_topic_name
-  # kms_master_key_id = "alias/aws/sns" !! BREAKING RIGHT NOW
+  kms_master_key_id = "alias/aws/sns"
 }
 
 data "aws_iam_policy_document" "cloudtrail_sns" {
@@ -173,5 +173,6 @@ resource "aws_cloudtrail" "this" {
   depends_on = [
     aws_iam_role_policy.cloudtrail_to_cw,
     aws_sns_topic_policy.this,
+    module.log_bucket,
   ]
 }

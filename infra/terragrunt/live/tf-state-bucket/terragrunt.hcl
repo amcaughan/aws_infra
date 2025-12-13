@@ -8,8 +8,6 @@ terraform {
 
 inputs = {
   bucket_name = "amcaughan-tf-state-us-east-2"
-
-  # optional overrides
   noncurrent_version_expiration_days = 30
   abort_incomplete_multipart_days    = 7
 }
