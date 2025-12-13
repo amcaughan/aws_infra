@@ -3,7 +3,7 @@ include "root" {
 }
 
 terraform {
-  source = "../../modules/core"
+  source = "../../../modules/s3-account-public-access-block"
 }
 
 inputs = {}
