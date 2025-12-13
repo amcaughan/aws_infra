@@ -18,11 +18,11 @@ resource "aws_cloudtrail" "main" {
     Name = "account-trail"
   }
 
-depends_on = [
-  aws_s3_bucket_policy.cloudtrail,
-  aws_iam_role_policy.cloudtrail_to_cw,
-  aws_sns_topic_policy.cloudtrail
-]
+  depends_on = [
+    aws_s3_bucket_policy.cloudtrail,
+    aws_iam_role_policy.cloudtrail_to_cw,
+    aws_sns_topic_policy.cloudtrail
+  ]
 }
 
 # CloudWatch Logs group for CloudTrail
@@ -73,7 +73,7 @@ resource "aws_iam_role_policy" "cloudtrail_to_cw" {
 
 # SNS topic for CloudTrail log delivery notifications
 resource "aws_sns_topic" "cloudtrail" {
-  name = "cloudtrail-log-delivery"
+  name              = "cloudtrail-log-delivery"
   kms_master_key_id = "alias/aws/sns"
 }
 
@@ -228,7 +228,7 @@ data "aws_iam_policy_document" "cloudtrail_bucket" {
     condition {
       test     = "ArnLike"
       variable = "aws:SourceArn"
-      values   = [
+      values = [
         "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/account-trail"
       ]
     }

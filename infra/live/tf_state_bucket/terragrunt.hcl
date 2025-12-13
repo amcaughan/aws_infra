@@ -7,7 +7,7 @@ terraform {
 }
 
 inputs = {
-  bucket_name      = "amcaughan-tf-state-us-east-2"
+  bucket_name = "amcaughan-tf-state-us-east-2"
   tags = {
     Project   = "aws_infra_core"
     ManagedBy = "terraform"

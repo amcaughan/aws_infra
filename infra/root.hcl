@@ -15,11 +15,11 @@ remote_state {
   backend = "s3"
 
   config = {
-    bucket         = "amcaughan-tf-state-us-east-2"
-    key            = "${path_relative_to_include()}/terraform.tfstate"
-    region         = local.aws_region
-    use_lockfile   = true
-    encrypt        = true
+    bucket       = "amcaughan-tf-state-us-east-2"
+    key          = "${path_relative_to_include()}/terraform.tfstate"
+    region       = local.aws_region
+    use_lockfile = true
+    encrypt      = true
   }
 }
 

@@ -1,0 +1,20 @@
+repos:
+  # Terraform / Terragrunt formatting
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: cba87736ffe2c479523d9d69919c1215084c7acc # 1.104.0
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+        args:
+          - --no-tests
+      - id: terragrunt_fmt
+
+  # Secrets detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: b66ac75e4fa93d86d78fccd6e2f36d2c0698b2a2 # 8.30.0
+    hooks:
+      - id: gitleaks
+        args:
+          - detect
+          - --no-git
+          - --redact
