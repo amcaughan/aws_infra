@@ -74,6 +74,7 @@ resource "aws_iam_role_policy" "cloudtrail_to_cw" {
 # SNS topic for CloudTrail log delivery notifications
 resource "aws_sns_topic" "cloudtrail" {
   name = "cloudtrail-log-delivery"
+  kms_master_key_id = "alias/aws/sns"
 }
 
 data "aws_iam_policy_document" "cloudtrail_sns" {

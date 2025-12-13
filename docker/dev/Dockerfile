@@ -8,7 +8,6 @@ ARG TERRAGRUNT_VERSION=v0.94.0
 # Basic tools
 RUN apt-get update && apt-get install -y \
     apt-utils \
-    sudo \
     git \
     curl \
     unzip \

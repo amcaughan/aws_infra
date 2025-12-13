@@ -3,4 +3,16 @@
 # Many alerts aren't worth the cost / complexity
 
 skip-check:
-  CKV2_AWS_3
+  - CKV2_AWS_3 # Multi-region Guard Duty
+  - CKV_AWS_35 # KMS CMK
+  - CKV_AWS_158 # Cloudwatch KMS
+  - CKV_AWS_338 # > 1 year cloudwatch logs
+  - CKV2_AWS_62 # S3 event notifications
+  - CKV_AWS_18 # S3 access logging
+  - CKV_AWS_145 # S3 KMS encryption
+  - CKV_AWS_144 # S3 cross-region replication
+  - CKV_GHA_7 # Github action behavior modified by UI toggles
+  - CKV_DOCKER_2 # Force HEALTHCHECK (this is just a local toolbox, not needed)
+
+
+
