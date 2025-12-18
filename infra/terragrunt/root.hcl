@@ -21,10 +21,6 @@ remote_state {
   }
 }
 
-inputs = {
-  common_tags = local.common_tags
-}
-
 generate "provider" {
   path      = "provider.tf"
   if_exists = "overwrite_terragrunt"
