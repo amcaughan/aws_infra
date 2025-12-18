@@ -5,6 +5,9 @@ locals {
   ]
 }
 
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
 resource "aws_cloudwatch_event_rule" "guardduty_crypto" {
   name        = "${var.function_name}-rule"
   description = "Auto-stop instances on GuardDuty EC2 cryptomining findings and notify SNS"
@@ -34,12 +37,28 @@ resource "aws_iam_role" "lambda" {
   assume_role_policy = data.aws_iam_policy_document.lambda_assume.json
 }
 
+locals {
+  # CloudWatch log group ARN pattern for this function
+  lambda_log_group_arn = "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.function_name}:*"
+
+  # EC2 instance ARN pattern, scoped to this account+region
+  instance_arn_pattern = "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*"
+}
+
 data "aws_iam_policy_document" "lambda_policy" {
   statement {
-    sid    = "StopAndDescribeInstances"
+    sid    = "StopInstancesScoped"
     effect = "Allow"
     actions = [
-      "ec2:StopInstances",
+      "ec2:StopInstances"
+    ]
+    resources = [local.instance_arn_pattern]
+  }
+
+  statement {
+    sid    = "DescribeInstances"
+    effect = "Allow"
+    actions = [
       "ec2:DescribeInstances",
       "ec2:DescribeTags"
     ]
@@ -47,23 +66,39 @@ data "aws_iam_policy_document" "lambda_policy" {
   }
 
   statement {
-    sid    = "PublishToSNS"
-    effect = "Allow"
-    actions = [
-      "sns:Publish"
-    ]
+    sid     = "PublishToSNS"
+    effect  = "Allow"
+    actions = ["sns:Publish"]
     resources = [var.sns_topic_arn]
   }
 
   statement {
-    sid    = "WriteLogs"
+    sid    = "WriteLogsScoped"
     effect = "Allow"
     actions = [
-      "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents"
     ]
+    resources = [local.lambda_log_group_arn]
+  }
+
+  # CreateLogGroup cannot be practically resource-scoped
+  # checkov:skip=CKV_AWS_356:Ensure no IAM policies documents allow "*" as a statement's resource for restrictable actions
+  statement {
+    sid     = "CreateLogGroup"
+    effect  = "Allow"
+    actions = ["logs:CreateLogGroup"]
     resources = ["*"]
+  }
+
+  dynamic "statement" {
+    for_each = var.enable_dlq ? [1] : []
+    content {
+      sid      = "SendToDLQ"
+      effect   = "Allow"
+      actions  = ["sqs:SendMessage"]
+      resources = [aws_sqs_queue.dlq[0].arn]
+    }
   }
 }
 
@@ -71,6 +106,14 @@ resource "aws_iam_role_policy" "lambda_inline" {
   name   = "${var.function_name}-policy"
   role   = aws_iam_role.lambda.id
   policy = data.aws_iam_policy_document.lambda_policy.json
+}
+
+# Optional DLQ
+resource "aws_sqs_queue" "dlq" {
+  count = var.enable_dlq ? 1 : 0
+  name  = "${var.function_name}-dlq"
+
+  kms_master_key_id = "alias/aws/sqs"
 }
 
 # Lambda code
@@ -94,10 +137,23 @@ resource "aws_lambda_function" "this" {
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
+  # Safety valve to limit blast radius
+  reserved_concurrent_executions = var.reserved_concurrent_executions
+
+  # Optional env var encryption (leave null to use default)
+  kms_key_arn = var.kms_key_arn
+
   environment {
     variables = {
       SNS_TOPIC_ARN  = var.sns_topic_arn
       STOP_INSTANCES = var.stop_instances ? "true" : "false"
+    }
+  }
+
+  dynamic "dead_letter_config" {
+    for_each = var.enable_dlq ? [1] : []
+    content {
+      target_arn = aws_sqs_queue.dlq[0].arn
     }
   }
 
