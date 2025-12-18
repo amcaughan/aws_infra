@@ -13,3 +13,4 @@ skip-check:
   - CKV_AWS_144 # S3 cross-region replication
   - CKV_GHA_7 # Github action behavior modified by UI toggles
   - CKV_DOCKER_2 # Force HEALTHCHECK (this is just a local toolbox, not needed)
+  - CKV_AWS_50 # X-ray for lambda
