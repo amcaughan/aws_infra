@@ -3,7 +3,7 @@ include "root" {
 }
 
 terraform {
-  source = "../..//modules/tf-state-bucket"
+  source = "${get_repo_root()}/infra/terragrunt//modules/tf-state-bucket"
 }
 
 inputs = {

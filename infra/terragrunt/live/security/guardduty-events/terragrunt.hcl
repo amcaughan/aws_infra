@@ -13,7 +13,7 @@ dependency "alerts_sns" {
 }
 
 terraform {
-  source = "../../../modules/guardduty-eventbridge"
+  source = "${get_repo_root()}/infra/terragrunt/modules/guardduty-eventbridge"
 }
 
 inputs = {

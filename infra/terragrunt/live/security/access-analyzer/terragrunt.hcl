@@ -3,7 +3,7 @@ include "root" {
 }
 
 terraform {
-  source = "../../../modules/access-analyzer"
+  source = "${get_repo_root()}/infra/terragrunt/modules/access-analyzer"
 }
 
 inputs = {

@@ -3,7 +3,7 @@ include "root" {
 }
 
 terraform {
-  source = "../../../modules/guardduty"
+  source = "${get_repo_root()}/infra/terragrunt/modules/guardduty"
 }
 
 inputs = {

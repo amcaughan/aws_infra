@@ -13,7 +13,7 @@ dependency "visibility_alerts_sns" {
 }
 
 terraform {
-  source = "../../../modules/budget"
+  source = "${get_repo_root()}/infra/terragrunt/modules/budget"
 }
 
 inputs = {

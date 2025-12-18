@@ -13,7 +13,7 @@ dependency "alerts_sns" {
 }
 
 terraform {
-  source = "../../../modules/cloudtrail-alarms"
+  source = "${get_repo_root()}/infra/terragrunt/modules/cloudtrail-alarms"
 }
 
 inputs = {
