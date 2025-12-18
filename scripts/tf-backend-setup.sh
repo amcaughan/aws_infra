@@ -16,6 +16,37 @@ aws_cmd() {
   aws --region "$REGION" --profile "$PROFILE" "$@"
 }
 
+# Email setup
+# --- Alert email → SSM Parameter Store (for SNS subscriptions / budgets) ---
+SSM_ALERT_EMAIL_PARAM="/infra/alert_email"
+
+ensure_alert_email_param() {
+  echo_hdr "Ensuring SSM parameter exists: $SSM_ALERT_EMAIL_PARAM"
+
+  if [[ -z "${ALERT_EMAIL:-}" ]]; then
+    echo "ERROR: ALERT_EMAIL env var is not set."
+    echo "Set it like: export ALERT_EMAIL=\"you@example.com\""
+    exit 1
+  fi
+
+  # Minimal sanity check (not perfect, but avoids obvious garbage)
+  if [[ "$ALERT_EMAIL" != *"@"* || "$ALERT_EMAIL" != *"."* ]]; then
+    echo "ERROR: ALERT_EMAIL does not look like an email address: $ALERT_EMAIL"
+    exit 1
+  fi
+
+  # Write/overwrite the parameter (String is fine; not actually secret)
+  aws_cmd ssm put-parameter \
+    --name "$SSM_ALERT_EMAIL_PARAM" \
+    --type "String" \
+    --value "$ALERT_EMAIL" \
+    --overwrite >/dev/null
+
+  echo "SSM parameter set: $SSM_ALERT_EMAIL_PARAM"
+}
+
+ensure_alert_email_param
+
 
 # State Bucket
 echo_hdr "Checking S3 bucket: $BUCKET_NAME"
@@ -115,7 +146,7 @@ aws_cmd s3api put-bucket-tagging \
 
 
 echo_hdr "Done."
-
+echo_hdr "  alert_email_ssm_param = \"$SSM_ALERT_EMAIL_PARAM\""
 echo "Use these values in your Terragrunt root config:"
 echo "  bucket         = \"$BUCKET_NAME\""
 echo "  region         = \"$REGION\""
