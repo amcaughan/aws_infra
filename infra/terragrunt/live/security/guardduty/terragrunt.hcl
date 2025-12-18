@@ -8,5 +8,5 @@ terraform {
 
 inputs = {
   enable        = true
-  enable_s3_logs = true
+  enable_s3_logs = false
 }
