@@ -3,7 +3,7 @@ include "root" {
 }
 
 terraform {
-  source = "../../..//modules/cloudtrail"
+  source = "${get_repo_root()}/infra/terragrunt//modules/cloudtrail"
 }
 
 inputs = {

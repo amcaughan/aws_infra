@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Edit these
+# Config
 REGION="us-east-2"
 PROFILE="default"
-BUCKET_NAME="amcaughan-tf-state-us-east-2" 
+BUCKET_NAME="amcaughan-tf-state-us-east-2"
+
+# Alert email (for SNS subscriptions / budgets / whatever)
+SSM_ALERT_EMAIL_PARAM="/infra/alert_email"
+
+# Lifecycle defaults (for tf state bucket)
+NONCURRENT_EXPIRE_DAYS=30
+ABORT_MULTIPART_DAYS=7
 
 # Helpers
 echo_hdr() {
@@ -16,10 +23,26 @@ aws_cmd() {
   aws --region "$REGION" --profile "$PROFILE" "$@"
 }
 
-# Email setup
-# --- Alert email → SSM Parameter Store (for SNS subscriptions / budgets) ---
-SSM_ALERT_EMAIL_PARAM="/infra/alert_email"
+retry() {
+  local attempts="$1"; shift
+  local n=1
+  until "$@"; do
+    if (( n >= attempts )); then
+      return 1
+    fi
+    sleep $(( n * 2 ))
+    n=$(( n + 1 ))
+  done
+}
 
+require_aws_cli() {
+  if ! command -v aws >/dev/null 2>&1; then
+    echo "ERROR: aws CLI not found. Install AWS CLI v2 and retry."
+    exit 1
+  fi
+}
+
+# Email parameter
 ensure_alert_email_param() {
   echo_hdr "Ensuring SSM parameter exists: $SSM_ALERT_EMAIL_PARAM"
 
@@ -29,13 +52,11 @@ ensure_alert_email_param() {
     exit 1
   fi
 
-  # Minimal sanity check (not perfect, but avoids obvious garbage)
   if [[ "$ALERT_EMAIL" != *"@"* || "$ALERT_EMAIL" != *"."* ]]; then
     echo "ERROR: ALERT_EMAIL does not look like an email address: $ALERT_EMAIL"
     exit 1
   fi
 
-  # Write/overwrite the parameter (String is fine; not actually secret)
   aws_cmd ssm put-parameter \
     --name "$SSM_ALERT_EMAIL_PARAM" \
     --type "String" \
@@ -45,66 +66,88 @@ ensure_alert_email_param() {
   echo "SSM parameter set: $SSM_ALERT_EMAIL_PARAM"
 }
 
-ensure_alert_email_param
-
-
 # State Bucket
-echo_hdr "Checking S3 bucket: $BUCKET_NAME"
+ensure_state_bucket() {
+  echo_hdr "Checking S3 bucket: $BUCKET_NAME"
 
-if aws_cmd s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
-  echo "Bucket already exists: $BUCKET_NAME"
-else
-  echo "Bucket does not exist. Creating..."
-
-  if [ "$REGION" = "us-east-1" ]; then
-    aws_cmd s3api create-bucket \
-      --bucket "$BUCKET_NAME"
+  if aws_cmd s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+    echo "Bucket already exists: $BUCKET_NAME"
   else
-    aws_cmd s3api create-bucket \
-      --bucket "$BUCKET_NAME" \
-      --create-bucket-configuration LocationConstraint="$REGION"
+    echo "Bucket does not exist. Creating..."
+
+    if [ "$REGION" = "us-east-1" ]; then
+      aws_cmd s3api create-bucket --bucket "$BUCKET_NAME"
+    else
+      aws_cmd s3api create-bucket \
+        --bucket "$BUCKET_NAME" \
+        --create-bucket-configuration LocationConstraint="$REGION"
+    fi
+
+    echo "Bucket created: $BUCKET_NAME"
   fi
 
-  echo "Bucket created: $BUCKET_NAME"
-fi
+  echo_hdr "Waiting for bucket to be reachable: $BUCKET_NAME"
+  retry 6 aws_cmd s3api head-bucket --bucket "$BUCKET_NAME" >/dev/null
 
-echo_hdr "Enabling versioning on bucket: $BUCKET_NAME"
-aws_cmd s3api put-bucket-versioning \
-  --bucket "$BUCKET_NAME" \
-  --versioning-configuration Status=Enabled
+  echo_hdr "Enabling versioning on bucket: $BUCKET_NAME"
+  aws_cmd s3api put-bucket-versioning \
+    --bucket "$BUCKET_NAME" \
+    --versioning-configuration Status=Enabled
 
-echo_hdr "Enabling default encryption (SSE-S3) on bucket: $BUCKET_NAME"
-aws_cmd s3api put-bucket-encryption \
-  --bucket "$BUCKET_NAME" \
-  --server-side-encryption-configuration '{
-    "Rules": [{
-      "ApplyServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" }
-    }]
-  }'
+  echo_hdr "Enabling default encryption (SSE-S3) on bucket: $BUCKET_NAME"
+  aws_cmd s3api put-bucket-encryption \
+    --bucket "$BUCKET_NAME" \
+    --server-side-encryption-configuration '{
+      "Rules": [{
+        "ApplyServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" }
+      }]
+    }'
 
-echo_hdr "Blocking public access for bucket: $BUCKET_NAME"
-aws_cmd s3api put-public-access-block \
-  --bucket "$BUCKET_NAME" \
-  --public-access-block-configuration \
-    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+  echo_hdr "Blocking public access for bucket: $BUCKET_NAME"
+  aws_cmd s3api put-public-access-block \
+    --bucket "$BUCKET_NAME" \
+    --public-access-block-configuration \
+      "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
 
-bucket_policy_exists() {
-  aws_cmd s3api get-bucket-policy --bucket "$BUCKET_NAME" >/dev/null 2>&1
+  echo_hdr "Enforcing BucketOwnerEnforced (disable ACLs) on bucket: $BUCKET_NAME"
+  aws_cmd s3api put-bucket-ownership-controls \
+    --bucket "$BUCKET_NAME" \
+    --ownership-controls '{
+      "Rules": [{"ObjectOwnership":"BucketOwnerEnforced"}]
+    }'
+
+  echo_hdr "Applying lifecycle rules on bucket: $BUCKET_NAME"
+  LIFECYCLE_FILE="$(mktemp)"
+  cat >"$LIFECYCLE_FILE" <<EOF
+{
+  "Rules": [
+    {
+      "ID": "expire-noncurrent-versions",
+      "Status": "Enabled",
+      "Filter": {},
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": $NONCURRENT_EXPIRE_DAYS
+      }
+    },
+    {
+      "ID": "abort-incomplete-multipart-uploads",
+      "Status": "Enabled",
+      "Filter": {},
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": $ABORT_MULTIPART_DAYS
+      }
+    }
+  ]
 }
+EOF
 
-echo_hdr "Enforcing BucketOwnerEnforced (disable ACLs) on bucket: $BUCKET_NAME"
-aws_cmd s3api put-bucket-ownership-controls \
-  --bucket "$BUCKET_NAME" \
-  --ownership-controls '{
-    "Rules": [{"ObjectOwnership":"BucketOwnerEnforced"}]
-  }'
+  aws_cmd s3api put-bucket-lifecycle-configuration \
+    --bucket "$BUCKET_NAME" \
+    --lifecycle-configuration "file://$LIFECYCLE_FILE"
 
-echo_hdr "Ensuring TLS-only bucket policy exists on bucket: $BUCKET_NAME"
+  rm -f "$LIFECYCLE_FILE"
 
-if bucket_policy_exists; then
-  echo "Bucket policy already exists; not overwriting."
-else
-  echo_hdr "Enforcing TLS-only bucket policy on bucket: $BUCKET_NAME"
+  echo_hdr "Enforcing TLS-only bucket policy on bucket: $BUCKET_NAME (overwrite)"
   POLICY_FILE="$(mktemp)"
   cat >"$POLICY_FILE" <<EOF
 {
@@ -132,18 +175,22 @@ EOF
     --policy "file://$POLICY_FILE"
 
   rm -f "$POLICY_FILE"
-fi
 
-echo_hdr "Tagging bucket: $BUCKET_NAME"
-aws_cmd s3api put-bucket-tagging \
-  --bucket "$BUCKET_NAME" \
-  --tagging '{
-    "TagSet": [
-      {"Key":"Project","Value":"aws_infra_core"},
-      {"Key":"ManagedBy","Value":"bootstrap"}
-    ]
-  }'
+  echo_hdr "Tagging bucket: $BUCKET_NAME"
+  aws_cmd s3api put-bucket-tagging \
+    --bucket "$BUCKET_NAME" \
+    --tagging '{
+      "TagSet": [
+        {"Key":"Project","Value":"aws_infra_core"},
+        {"Key":"ManagedBy","Value":"bootstrap"}
+      ]
+    }'
+}
 
+# Main
+require_aws_cli
+ensure_alert_email_param
+ensure_state_bucket
 
 echo_hdr "Done."
 echo_hdr "  alert_email_ssm_param = \"$SSM_ALERT_EMAIL_PARAM\""
@@ -163,76 +210,4 @@ remote_state {
     encrypt        = true
   }
 }
-EOF
-
-cat <<EOF
-
-============================================================
-Terraform backend bootstrap complete
-============================================================
-
-This script created and/or enforced the following on the
-Terraform state S3 bucket:
-
-  - S3 bucket:               $BUCKET_NAME
-  - Region:                  $REGION
-  - Block Public Access:     ENABLED
-  - Bucket versioning:       ENABLED
-  - Default encryption:      SSE-S3 (AES256)
-  - Object ownership:        BucketOwnerEnforced (ACLs disabled)
-  - Bucket policy:           TLS-only access enforced
-  - Tags:
-      Project   = aws_infra_core
-      ManagedBy = bootstrap
-
-This bootstrap exists only to allow Terraform/Terragrunt
-to start safely. It is expected that Terraform will take
-ownership of these resources after initialization.
-
-------------------------------------------------------------
-Next steps (recommended)
-------------------------------------------------------------
-
-1) Define Terraform resources for the state bucket, e.g.:
-
-     - aws_s3_bucket
-     - aws_s3_bucket_versioning
-     - aws_s3_bucket_server_side_encryption_configuration
-     - aws_s3_bucket_public_access_block
-     - aws_s3_bucket_ownership_controls
-     - aws_s3_bucket_policy
-
-2) Import the existing bucket into Terraform state:
-
-     terraform import aws_s3_bucket.tf_state $BUCKET_NAME
-     terraform import aws_s3_bucket_versioning.tf_state $BUCKET_NAME
-     terraform import aws_s3_bucket_server_side_encryption_configuration.tf_state $BUCKET_NAME
-     terraform import aws_s3_bucket_public_access_block.tf_state $BUCKET_NAME
-     terraform import aws_s3_bucket_ownership_controls.tf_state $BUCKET_NAME
-
-   If you manage the bucket policy in Terraform:
-
-     terraform import aws_s3_bucket_policy.tf_state $BUCKET_NAME
-
-3) Run 'terraform plan' and adjust configuration until
-   the plan is clean.
-
-------------------------------------------------------------
-Additional hardening to manage in Terraform (later)
-------------------------------------------------------------
-
-  - Restrict bucket access to specific IAM roles
-    (e.g. CI role, admin role) via bucket policy.
-
-  - Add or standardize tags (e.g. environment, owner,
-    cost center) under Terraform management.
-
-  - Optionally switch to SSE-KMS if you want tighter
-    access control and auditing.
-
-Once Terraform fully manages the bucket, this bootstrap
-script should only be needed for new accounts.
-
-============================================================
-
 EOF

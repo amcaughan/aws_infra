@@ -3,10 +3,10 @@ include "root" {
 }
 
 terraform {
-  source = "../../../modules/guardduty"
+  source = "${get_repo_root()}/infra/terragrunt/modules/guardduty"
 }
 
 inputs = {
   enable        = true
-  enable_s3_logs = true
+  enable_s3_logs = false
 }

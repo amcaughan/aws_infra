@@ -3,7 +3,7 @@ include "root" {
 }
 
 terraform {
-  source = "../../../modules/alerts-sns"
+  source = "${get_repo_root()}/infra/terragrunt/modules/alerts-sns"
 }
 
 inputs = {
