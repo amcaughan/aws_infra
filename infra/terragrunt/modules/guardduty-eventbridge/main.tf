@@ -14,6 +14,7 @@ resource "aws_cloudwatch_event_target" "to_sns" {
   arn       = var.sns_topic_arn
 }
 
+# Allow EventBridge to publish to the SNS topic
 data "aws_iam_policy_document" "sns_policy" {
   statement {
     sid     = "AllowEventBridgePublish"

@@ -57,14 +57,16 @@ resource "aws_cloudwatch_log_metric_filter" "iam_changes" {
   name           = "IamChanges"
   log_group_name = var.log_group_name
 
-  pattern = "{ ($.eventSource = \"iam.amazonaws.com\") && ( \
-    ($.eventName = \"CreateUser\") || ($.eventName = \"DeleteUser\") || \
-    ($.eventName = \"CreateRole\") || ($.eventName = \"DeleteRole\") || \
-    ($.eventName = \"PutUserPolicy\") || ($.eventName = \"PutRolePolicy\") || \
-    ($.eventName = \"AttachUserPolicy\") || ($.eventName = \"AttachRolePolicy\") || \
-    ($.eventName = \"DetachUserPolicy\") || ($.eventName = \"DetachRolePolicy\") || \
-    ($.eventName = \"UpdateAssumeRolePolicy\") \
-  ) }"
+  pattern = <<-EOT
+{ ($.eventSource = "iam.amazonaws.com") && (
+    ($.eventName = "CreateUser") || ($.eventName = "DeleteUser") ||
+    ($.eventName = "CreateRole") || ($.eventName = "DeleteRole") ||
+    ($.eventName = "PutUserPolicy") || ($.eventName = "PutRolePolicy") ||
+    ($.eventName = "AttachUserPolicy") || ($.eventName = "AttachRolePolicy") ||
+    ($.eventName = "DetachUserPolicy") || ($.eventName = "DetachRolePolicy") ||
+    ($.eventName = "UpdateAssumeRolePolicy")
+) }
+EOT
 
   metric_transformation {
     name      = "IamChangesCount"

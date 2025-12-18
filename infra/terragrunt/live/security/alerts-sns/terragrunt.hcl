@@ -7,6 +7,6 @@ terraform {
 }
 
 inputs = {
-  topic_name        = "security-alerts"
-  email_param_name  = "/infra/alert_email"
+  topic_name       = "security-alerts"
+  email_param_name = "/infra/alert_email"
 }
