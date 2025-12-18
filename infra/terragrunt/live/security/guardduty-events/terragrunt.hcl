@@ -9,7 +9,7 @@ dependency "alerts_sns" {
     topic_arn = "arn:aws:sns:us-east-2:000000000000:security-alerts"
   }
 
-  mock_outputs_allowed_terraform_commands = ["plan", "validate"]
+  mock_outputs_allowed_terraform_commands = ["init", "plan", "validate"]
 }
 
 terraform {
