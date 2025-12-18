@@ -2,6 +2,16 @@ include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
+dependency "cloudtrail" {
+  config_path = "../cloudtrail"
+
+  mock_outputs = {
+    log_group_name = "/aws/cloudtrail/account-trail"
+  }
+
+  mock_outputs_allowed_terraform_commands = ["plan", "validate"]
+}
+
 dependency "alerts_sns" {
   config_path = "../alerts-sns"
 
@@ -17,7 +27,7 @@ terraform {
 }
 
 inputs = {
-  log_group_name = "/aws/cloudtrail/account-trail"
+  log_group_name = dependency.cloudtrail.outputs.log_group_name
   sns_topic_arn  = dependency.alerts_sns.outputs.topic_arn
 
   period_seconds = 300
