@@ -1,4 +1,4 @@
-#aws_infra
+# aws_infra
 
 Personal AWS account infrastructure managed with Terragrunt and Terraform.
 
