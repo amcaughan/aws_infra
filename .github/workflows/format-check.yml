@@ -41,4 +41,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          terragrunt hcl format --check --terragrunt-working-dir infra/terragrunt
+          terragrunt hcl format --check
