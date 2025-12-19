@@ -82,8 +82,6 @@ data "aws_iam_policy_document" "lambda_policy" {
     resources = [local.lambda_log_group_arn]
   }
 
-  # CreateLogGroup cannot be practically resource-scoped
-  # checkov:skip=CKV_AWS_356:Ensure no IAM policies documents allow "*" as a statement's resource for restrictable actions
   statement {
     sid     = "CreateLogGroup"
     effect  = "Allow"
