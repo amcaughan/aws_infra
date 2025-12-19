@@ -6,17 +6,20 @@ variable "email_param_name" {
   type = string
 }
 
-# Extra statements expressed in Terraform-native shape.
-variable "extra_topic_policy_statements" {
+# Publisher allowlist. Each entry becomes one SNS topic-policy statement.
+# principal_type examples: "Service", "AWS"
+# examples:
+#   - Service: ["cloudwatch.amazonaws.com"]
+#   - AWS: ["arn:aws:iam::123456789012:role/MyRole", "arn:aws:iam::123456789012:root"]
+variable "publisher_statements" {
   type = list(object({
-    sid     = string
-    effect  = optional(string, "Allow")
-    actions = list(string)
-
+    sid                   = string
     principal_type        = string
     principal_identifiers = list(string)
 
-    # Optional list of conditions, already in aws_iam_policy_document format
+    actions = optional(list(string), ["sns:Publish"])
+
+    # Optional conditions in aws_iam_policy_document condition-block format
     conditions = optional(list(object({
       test     = string
       variable = string

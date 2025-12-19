@@ -1,6 +1,7 @@
 resource "aws_sns_topic" "this" {
   name              = var.topic_name
-  kms_master_key_id = "alias/aws/sns"
+  # I would use a key in a professional account, but I don't want to pay for one here lol
+  # kms_master_key_id = "alias/aws/sns"
 }
 
 data "aws_ssm_parameter" "email" {
@@ -13,28 +14,15 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = trimspace(data.aws_ssm_parameter.email.value)
 }
 
-data "aws_caller_identity" "current" {}
-
+# Attach a topic policy only if you have publisher statements.
 data "aws_iam_policy_document" "topic_policy" {
-  # Explicitly allow account owner full control
-  statement {
-    sid    = "AllowOwnerAllActions"
-    effect = "Allow"
-
-    principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
-    }
-
-    actions   = ["sns:*"]
-    resources = [aws_sns_topic.this.arn]
-  }
+  count = length(var.publisher_statements) > 0 ? 1 : 0
 
   dynamic "statement" {
-    for_each = var.extra_topic_policy_statements
+    for_each = var.publisher_statements
     content {
       sid    = statement.value.sid
-      effect = statement.value.effect
+      effect = "Allow"
 
       principals {
         type        = statement.value.principal_type
@@ -57,6 +45,7 @@ data "aws_iam_policy_document" "topic_policy" {
 }
 
 resource "aws_sns_topic_policy" "this" {
+  count  = length(var.publisher_statements) > 0 ? 1 : 0
   arn    = aws_sns_topic.this.arn
-  policy = data.aws_iam_policy_document.topic_policy.json
+  policy = data.aws_iam_policy_document.topic_policy[0].json
 }

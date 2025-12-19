@@ -35,8 +35,3 @@ data "aws_iam_policy_document" "sns_policy" {
     }
   }
 }
-
-resource "aws_sns_topic_policy" "allow_eventbridge" {
-  arn    = var.sns_topic_arn
-  policy = data.aws_iam_policy_document.sns_policy.json
-}
