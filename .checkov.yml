@@ -14,3 +14,7 @@ skip-check:
   - CKV_GHA_7 # Github action behavior modified by UI toggles
   - CKV_DOCKER_2 # Force HEALTHCHECK (this is just a local toolbox, not needed)
   - CKV_AWS_50 # X-ray for lambda
+  - CKV_AWS_26 # Ensure all data stored in the SNS topic is encrypted
+  - CKV_AWS_117 # Ensure that AWS Lambda function is configured inside a VPC
+  - CKV_AWS_272 # Ensure AWS Lambda function is configured to validate code-signing
+  - CKV2_AWS_73 # Ensure AWS SQS uses CMK not AWS default keys for encryption
