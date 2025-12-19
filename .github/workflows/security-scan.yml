@@ -98,7 +98,7 @@ jobs:
 
       - name: Comment report on PR (upsert)
         if: ${{ github.event_name == 'pull_request' }}
-        uses: amcaughan/shared_workflows/.github/actions/pr-comment@090b092361b1e27a6d99ee1a37a8838c8479da54
+        uses: amcaughan/shared_workflows/.github/actions/comment-pr@090b092361b1e27a6d99ee1a37a8838c8479da54
         with:
           comment_name: security-report
           body_file: out/pr-comment.md
