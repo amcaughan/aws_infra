@@ -20,5 +20,5 @@ skip-check:
   - CKV2_AWS_73 # Ensure AWS SQS uses CMK not AWS default keys for encryption
 
 skip-path:
-  # skip just this one file, it kills hostile cryptominers so it's strange
+  # skip just this one file, it kills hostile cryptominers so it's strange and triggers "warnings" I want to ignore
   - "infra/terragrunt/modules/guardduty-crypto-autokill/main.tf"

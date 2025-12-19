@@ -100,8 +100,6 @@ data "aws_iam_policy_document" "lambda_policy" {
   }
 }
 
-# checkov:skip=CKV_AWS_356: CreateLogGroup cannot be practically resource-scoped
-# checkov:skip=CKV_AWS_111: Lambda must be able to stop attacker-launched EC2 instances (cryptomining remediation); restricting by tag or ARN would defeat purpose
 resource "aws_iam_role_policy" "lambda_inline" {
   name   = "${var.function_name}-policy"
   role   = aws_iam_role.lambda.id
