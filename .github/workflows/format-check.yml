@@ -41,4 +41,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          terragrunt hclfmt --terragrunt-check --terragrunt-working-dir infra/terragrunt
+          terragrunt hclfmt --check --terragrunt-working-dir infra/terragrunt
