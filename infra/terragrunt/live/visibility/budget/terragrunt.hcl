@@ -17,20 +17,20 @@ terraform {
 }
 
 inputs = {
-  budget_name       = "Monthly Spend"
-  limit_amount      = "50.0"
-  limit_unit        = "USD"
-  time_unit         = "MONTHLY"
-  budget_type       = "COST"
+  budget_name  = "Monthly Spend"
+  limit_amount = "50.0"
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+  budget_type  = "COST"
 
   billing_view_name = "primary"
 
-  email_param_name  = "/infra/alert_email"
-  sns_topic_arn     = dependency.visibility_alerts_sns.outputs.topic_arn
+  email_param_name = "/infra/alert_email"
+  sns_topic_arn    = dependency.visibility_alerts_sns.outputs.topic_arn
 
   notifications = [
-    { notification_type = "ACTUAL",     threshold = 60.0  },
-    { notification_type = "ACTUAL",     threshold = 100.0 },
+    { notification_type = "ACTUAL", threshold = 60.0 },
+    { notification_type = "ACTUAL", threshold = 100.0 },
     { notification_type = "FORECASTED", threshold = 100.0 },
   ]
 }

@@ -1,5 +1,5 @@
 resource "aws_sns_topic" "this" {
-  name              = var.topic_name
+  name = var.topic_name
   # I would use a key in a professional account, but I don't want to pay for one here lol
   # kms_master_key_id = "alias/aws/sns"
 }

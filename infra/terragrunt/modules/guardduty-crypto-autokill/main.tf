@@ -66,9 +66,9 @@ data "aws_iam_policy_document" "lambda_policy" {
   }
 
   statement {
-    sid     = "PublishToSNS"
-    effect  = "Allow"
-    actions = ["sns:Publish"]
+    sid       = "PublishToSNS"
+    effect    = "Allow"
+    actions   = ["sns:Publish"]
     resources = [var.sns_topic_arn]
   }
 
@@ -83,18 +83,18 @@ data "aws_iam_policy_document" "lambda_policy" {
   }
 
   statement {
-    sid     = "CreateLogGroup"
-    effect  = "Allow"
-    actions = ["logs:CreateLogGroup"]
+    sid       = "CreateLogGroup"
+    effect    = "Allow"
+    actions   = ["logs:CreateLogGroup"]
     resources = ["*"]
   }
 
   dynamic "statement" {
     for_each = var.enable_dlq ? [1] : []
     content {
-      sid      = "SendToDLQ"
-      effect   = "Allow"
-      actions  = ["sqs:SendMessage"]
+      sid       = "SendToDLQ"
+      effect    = "Allow"
+      actions   = ["sqs:SendMessage"]
       resources = [aws_sqs_queue.dlq[0].arn]
     }
   }

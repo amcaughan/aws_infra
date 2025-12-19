@@ -5,7 +5,7 @@ data "aws_ssm_parameter" "email" {
 }
 
 locals {
-  alert_email = trimspace(data.aws_ssm_parameter.email.value)
+  alert_email      = trimspace(data.aws_ssm_parameter.email.value)
   billing_view_arn = "arn:aws:billing::${data.aws_caller_identity.current.account_id}:billingview/${var.billing_view_name}"
 }
 
@@ -23,8 +23,8 @@ resource "aws_budgets_budget" "this" {
   cost_types {
     include_credit = false
     include_refund = false
-    use_amortized = false
-    use_blended   = false
+    use_amortized  = false
+    use_blended    = false
   }
 
 
