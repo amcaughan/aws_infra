@@ -114,6 +114,10 @@ resource "aws_iam_role_policy" "cloudtrail_to_cw" {
   policy = data.aws_iam_policy_document.cloudtrail_to_cw.json
 }
 
+# NOTE:
+# This SNS topic has no subscribers now. It's just in case.
+# Actionable security alerts are handled via CloudWatch Logs metric alarms,
+# not CloudTrail delivery notifications.
 resource "aws_sns_topic" "this" {
   count             = var.enable_sns_notifications ? 1 : 0
   name              = var.sns_topic_name

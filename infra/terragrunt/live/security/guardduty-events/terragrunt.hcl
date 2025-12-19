@@ -18,4 +18,5 @@ terraform {
 
 inputs = {
   sns_topic_arn = dependency.alerts_sns.outputs.topic_arn
+  min_severity = 7
 }
